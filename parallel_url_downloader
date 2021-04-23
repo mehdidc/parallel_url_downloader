@@ -3,7 +3,7 @@
 Authors: 
  
 - Mehdi Cherti (https://github.com/mehdidc)
-- 
+- Sam Sepiol (https://github.com/afiaka87)
 
 """
 from clize import run

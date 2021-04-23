@@ -5,8 +5,7 @@ description = "Simplified ARIA2c based url downloader, makes it easy to download
 setup(
     name="parallel_url_downloader",
     version="0.1.0",
-    author="Mehdi Cherti, ",
-    author_email="mehdicherti@gmail.com",
+    author="Mehdi Cherti, Sam Sepiol",
     description=description,
     license="MIT",
     url="https://github.com/mehdidc/parallel_url_downloader",
