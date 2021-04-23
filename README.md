@@ -5,8 +5,8 @@ to make it easy to download a large number of urls.
 
 # How to Install ?
 
-- 1. Install Aria2 <https://aria2.github.io/>, in Debian/Ubuntu you can use `sudo apt install aria2`
-- 2. Install the script: `pip install git+https://github.com/mehdidc/parallel_url_downloader`
+1. Install Aria2 <https://aria2.github.io/>, in Debian/Ubuntu you can use `sudo apt install aria2`
+2. Install the script: `pip install git+https://github.com/mehdidc/parallel_url_downloader`
 
 # How to use ?
 
