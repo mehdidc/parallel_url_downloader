@@ -39,7 +39,7 @@ To download a chunk, you can use:
 `parallel_url_downloader download chunk_0.txt`
 
 This will download the urls in `chunk_0.txt`
-You can also easily download all the chunks in parallel using `xargs`:
+You can also easily download all the chunks in parallel using xargs:
 
 `find -name 'chunk*.txt'| xargs -n1 -P8 python cli.py download`
 
