@@ -41,7 +41,7 @@ To download a chunk, you can use:
 This will download the urls in `chunk_0.txt`
 You can also easily download all the chunks in parallel using xargs:
 
-`find -name 'chunk*.txt'| xargs -n1 -P8 python cli.py download`
+`find -name 'chunk*.txt'| xargs -n1 -P8 parallel_url_downloader download`
 
 here, `P8` specifies the total number of processes allowed in parallel (here 8), where each process
 launches Aria to download a single chunk file.
