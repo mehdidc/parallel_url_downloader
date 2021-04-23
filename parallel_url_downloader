@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+"""
+Authors: 
+ 
+- Mehdi Cherti (https://github.com/mehdidc)
+- 
+
+"""
+from clize import run
+from glob import glob
+import os
+from subprocess import call
+import tarfile
+from joblib import Parallel, delayed
+
+ARIA_OPTIONS_DEFAULT = "-x 16 --http-no-cache true -P true -Z true --split 16 --min-split-size 100M --continue --file-allocation=falloc -j 4096 --timeout=5 --max-file-not-found 1 -m 1 --deferred-input true --summary-interval 10 --optimize-concurrent-downloads true --connect-timeout 5 --quiet"
+
+
+def make_chunks(
+    urls_file,
+    *,
+    url_download_folder="downloads",
+    nb_urls_per_chunk=100, 
+    nb_chunks: int = None,
+    ext=".jpg",
+):
+    """
+    This will split the urls file into independent chunks so that downloading
+    is easily parallelizable. Even if Aria can in principle do that by itself,
+    we found that it is more efficient to launch several Aria processes in parallel,
+    one for each chunk. This also makes it easier to distribute the work among
+    different machines.
+
+    urls_file: text file containing urls to download
+    url_download_folder: folder where to put the downloaded files from urls.
+        Each file will be saved to `<url_download_folder>/<id><ext>` where
+        `id` is the id of the url (line number in `urls_file`, startint from 0)
+        and `ext` can be changed (default is `jpg`).
+    nb_urls_per_chunk: number of urls per chunk
+    nb_chunks: as an alternative of `nb_urls_per_chunk` it is also possible to provide
+        the number of chunks. In that case, `nb_urls_per_chunk` is ignored.
+    ext: default extension for downloaded files.
+    """
+    if nb_chunks is not None:
+        fd = open(urls_file, "r")
+        nb_urls = len(fd.readlines())
+        fd.close()
+        nb_urls_per_chunk = nb_urls // nb_chunks
+    print(f"Number of URLS per chunk: {nb_urls_per_chunk}")
+    fd = open(urls_file, "r")
+    i = 0
+    out = None
+    chunk_id = 0
+    for url in fd.readlines():
+        if out is None:
+            out = open(f"chunk_{chunk_id}.txt", "w")
+        url = url.strip().encode()
+        name = f"{i}{ext}"
+        out.write(f"{url.decode()}\n out={url_download_folder}/{name}\n")
+        i += 1
+        if i % nb_urls_per_chunk == 0:
+            out.close()
+            out = None
+            chunk_id += 1
+    if out:
+        out.close()
+    fd.close()
+
+
+def download(chunk_file, *, aria_options=ARIA_OPTIONS_DEFAULT):
+    """
+    Download a chunk of the urls. `chunk_file` should be one
+    of the chunks created using `make-chunks`.
+    """
+    print(f"Downloading:{chunk_file}")
+    cmd = f"aria2c {aria_options} -i {chunk_file}"
+    call(cmd, shell=True)
+
+
+def create_tar_archives(
+    download_folder, out_folder, *, nb_parts=10, nb_jobs=1, ext=".jpg", tar_mode="w"
+):
+    """
+    In case we have too many files, we can create tars so that data can be exchanged
+    more easily.
+
+    download_folder: download folder where the downloaded files are. Should be the
+    same as in `make-chunks`.
+    out_folder: folder where to write the tar files
+    nb_parts: number of tar files. Each tar file will contain an independent number
+        of files.
+    nb_jobs: number of parallel processes, each process will save one part, to make it
+        faster.
+    ext: extension, should be the same as in `make-chunks`
+    tar_mode: tar mode, check <https://docs.python.org/3/library/tarfile.html>
+    """
+    filenames = glob(os.path.join(download_folder, "*" + ext))
+    per_part = len(filenames) // nb_parts
+    start = 0
+    parts = []
+    for i in range(nb_parts):
+        end = start + per_part
+        if i == nb_parts - 1:
+            parts.append(filenames[start:])
+        else:
+            parts.append(filenames[start:end])
+        start = end
+    assert sum(map(len, parts)) == len(filenames)
+    Parallel(n_jobs=nb_jobs)(
+        delayed(_create_tar)(part, os.path.join(out_folder, f"part{i}.tar"), tar_mode)
+        for i, part in enumerate(parts)
+    )
+
+
+def _create_tar(filenames, target_path, tar_mode="w"):
+    with tarfile.open(target_path, tar_mode) as tar:
+        for filename in filenames:
+            tar.add(filename, arcname=os.path.basename(filename))
+    call(f"md5sum {target_path} > {target_path}.md5", shell=True)
+
+
+if __name__ == "__main__":
+    run([make_chunks, download, create_tar_archives])
