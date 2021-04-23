@@ -32,7 +32,7 @@ This can be changed, check the documentation for more information `parallel_url_
 Note that in this step, nothing is downloaded, this step specifies which urls belong to which chunk and
 the filename in local disk associated to each url.
 
-## Step 3: download a chunk
+## Step 3: download a chunk or several chunks in parallel
 
 To download a chunk, you can use:
 
