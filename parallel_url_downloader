@@ -111,7 +111,6 @@ def create_tar_archives(
         for i, part in enumerate(parts)
     )
 
-
 def _create_tar(filenames, target_path, tar_mode="w"):
     with tarfile.open(target_path, tar_mode) as tar:
         for filename in filenames:
@@ -119,5 +118,46 @@ def _create_tar(filenames, target_path, tar_mode="w"):
     call(f"md5sum {target_path} > {target_path}.md5", shell=True)
 
 
+def create_webdataset_tar_archives(input_folder, output_folder, tar_folder, *, nb_parts=10, nb_jobs=1, seed=42, input_ext='.jpg', target_ext='.txt'):
+    import random
+    random.seed(seed)
+    inputs = glob(os.path.join(input_folder, '*'+input_ext))
+    inputs = [inp for inp in inputs if _get_index(inp)]
+    outputs = [os.path.join(output_folder, f"{_get_index(inp)}{target_ext}") for inp in inputs]
+    paths = list(zip(inputs, outputs))
+    random.shuffle(paths)
+    chunk_size = len(paths) // nb_parts
+    nb = len(paths)
+    chunks = []
+    for i in range(nb_parts):
+        start = i * chunk_size
+        end = start + chunk_size if i < (nb_parts) else nb
+        chunks.append(paths[start:end])
+    Parallel(n_jobs=nb_jobs, backend="multiprocessing")(
+        delayed(_create_webdataset_tar_archive)(f"{tar_folder}/{i}_%05d.tar", chunk) for i, chunk in enumerate(chunks)
+    )
+
+def _create_webdataset_tar_archive(pattern, paths):
+    import webdataset as wds
+    sink = wds.ShardWriter(pattern, maxcount=len(paths))
+    for inp, out in paths:
+        index = _get_index(inp)
+        sink.write({
+            "__key__": str(index),
+            "input": open(inp, "rb").read(),
+            "output": open(out, "rb").read(),
+        })
+    sink.close()
+
+def _get_index(path):
+    try:
+        name = os.path.basename(path)
+        index = int(name.split(".")[0])
+        return index
+    except Exception:
+        return None
+
+
+
 if __name__ == "__main__":
-    run([make_chunks, download, create_tar_archives])
+    run([make_chunks, download, create_tar_archives, create_webdataset_tar_archives])
