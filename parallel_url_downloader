@@ -56,7 +56,9 @@ def make_chunks(
             out = open(f"chunk_{chunk_id}.txt", "w")
         url = url.strip().encode()
         name = f"{i}{ext}"
-        out.write(f"{url.decode()}\n out={url_download_folder}/{name}\n")
+        url_download_folder_cur = url_download_folder.format(chunk_id=chunk_id)
+        os.makedirs(url_download_folder_cur, exist_ok=True)
+        out.write(f"{url.decode()}\n out={url_download_folder_cur}/{name}\n")
         i += 1
         if i % nb_urls_per_chunk == 0:
             out.close()
